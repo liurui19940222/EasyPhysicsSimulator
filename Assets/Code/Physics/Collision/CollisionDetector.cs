@@ -80,7 +80,7 @@ namespace Physics {
             foreach (var vertex in vertices) {
                 if (one.Inside(vertex)) {
                     minPoint = vertex;
-                    _determineNormal(ref one, two.GetAxis(3) - minPoint, minPoint, out normal, out pen);
+                    _determineNormal(ref one, two.GetAxis(3) - /*minPoint*/one.GetAxis(3), minPoint, out normal, out pen);
                     return true;
                 }
             }
@@ -98,7 +98,7 @@ namespace Physics {
             foreach (var plane in planes) {
                 foreach (var edge in lines) {
                     if (plane.ComputeLineIntersectWithPlaneVolume(edge, out float t, out minPoint) == Plane.LineIntersectType.InSegment) {
-                        _determineNormal(ref one, two.GetAxis(3) - minPoint, minPoint, out normal, out pen);
+                        _determineNormal(ref one, two.GetAxis(3) - /*minPoint*/one.GetAxis(3), minPoint, out normal, out pen);
                         return true;
                     }
                 }
