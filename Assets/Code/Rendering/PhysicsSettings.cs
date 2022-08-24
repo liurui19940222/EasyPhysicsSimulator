@@ -13,5 +13,7 @@ public class PhysicsSettings : ScriptableObject {
 
     public float dragConst2 = 0.0f;
 
+    public float density = 5;
+
 }
 

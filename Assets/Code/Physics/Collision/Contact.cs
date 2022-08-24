@@ -18,6 +18,8 @@ namespace Physics {
 
         public Vector3 contactNormal;
 
+        public Matrix3x3 contactToWorld;
+
         public void SetBodyData(Rigidbody one, Rigidbody two, float friction, float restitution) {
             this.one = one;
             this.two = two;
@@ -26,6 +28,7 @@ namespace Physics {
         }
 
         public void Resolve(float deltaTime) {
+            CalculateContactBasis();
             ResolveVelocity(deltaTime);
             ResolveInterpenetration(deltaTime);
         }
@@ -42,52 +45,124 @@ namespace Physics {
             return Vector3.Dot(v, contactNormal);
         }
 
+        public void CalculateContactBasis() {
+            Vector3 contactTangent0, contactTangent1;
+            if (Mathf.Abs(contactNormal.x) > Mathf.Abs(contactNormal.y)) {
+                float s = 1.0f / Mathf.Sqrt(contactNormal.z * contactNormal.z + contactNormal.x * contactNormal.x);
+
+                contactTangent0.x = contactNormal.z * s;
+                contactTangent0.y = 0;
+                contactTangent0.z = -contactNormal.x * s;
+
+                contactTangent1.x = contactNormal.y * contactTangent0.x;
+                contactTangent1.y = contactNormal.z * contactTangent0.x - contactNormal.x * contactTangent0.z;
+                contactTangent1.z = -contactNormal.y * contactTangent0.x;
+            }
+            else {
+                float s = 1.0f / Mathf.Sqrt(contactNormal.z * contactNormal.z + contactNormal.y * contactNormal.y);
+
+                contactTangent0.x = 0;
+                contactTangent0.y = -contactNormal.z * s;
+                contactTangent0.z = contactNormal.y * s;
+
+                contactTangent1.x = contactNormal.y * contactTangent0.z - contactNormal.z * contactTangent0.y;
+                contactTangent1.y = -contactNormal.x * contactTangent0.z;
+                contactTangent1.z = contactNormal.x * contactTangent0.y;
+            }
+
+            contactToWorld.SetColumn(0, contactNormal);
+            contactToWorld.SetColumn(1, contactTangent0);
+            contactToWorld.SetColumn(2, contactTangent1);
+        }
+
         private void ResolveInterpenetration(float deltaTime) {
             if (penetration <= 0) {
                 return;
             }
-            
-            float totalMass = one.mass;
-            if (two != null) {
+
+            float totalMass = 0;
+            if (!one.isStatic) {
+                totalMass = one.mass;
+            }
+            if (two != null && !two.isStatic) {
                 totalMass += two.mass;
             }
-
             if (totalMass <= 0) {
                 return;
             }
 
             Vector3 movePerMass = contactNormal * (penetration / totalMass);
-            one.position += movePerMass * one.mass;
-
-            if (two != null) {
+            if (!one.isStatic) {
+                one.position += movePerMass * one.mass;
+            }
+            if (two != null && !two.isStatic) {
                 two.position += -movePerMass * two.mass;
             }
         }
 
         private void ResolveVelocity(float deltaTime) {
-            float separatingVelocity = CalculateSeparatingVelocity();
-            
-            if (separatingVelocity > 0) {
+            float deltaVelocity = CompulteDeltaVelocity(one) + CompulteDeltaVelocity(two);
+
+            Vector3 contactVelocity = CalculateLocalVelocity(one, deltaTime) - CalculateLocalVelocity(two, deltaTime);
+
+            float desiredDeltaVeclocity = -contactVelocity.x * (1 + restitution);
+
+            Vector3 impulseContact = new Vector3(desiredDeltaVeclocity / deltaVelocity, 0, 0);
+
+            Vector3 impulse = contactToWorld.Multiply(impulseContact);
+
+            ApplyImpulse(impulse, one, deltaTime);
+            ApplyImpulse(-impulse, two, deltaTime);
+        }
+
+        private float CompulteDeltaVelocity(Rigidbody body) {
+            if (body == null || body.isStatic) {
+                return 0;
+            }
+
+            Vector3 relativeContactPosition = contactPoint - body.position;
+
+            Vector3 torquePerUnitImpulse = Vector3.Cross(relativeContactPosition, contactNormal);
+
+            body.GetAngularAccelVelocity(torquePerUnitImpulse, out Vector3 rotationPerUnitImpulse);
+
+            Vector3 velocityPerUnitImpulse = Vector3.Cross(rotationPerUnitImpulse, relativeContactPosition);
+
+            Vector3 velocityPerUnitImpulseContact = contactToWorld.TransformTranspose(velocityPerUnitImpulse);
+
+            float angularComponent = velocityPerUnitImpulseContact.x;
+
+            return angularComponent + body.inverseMass;
+        }
+
+        private Vector3 CalculateLocalVelocity(Rigidbody body, float duration) {
+            if (body == null || body.isStatic) {
+                return Vector3.zero;
+            }
+
+            Vector3 relativeContactPosition = contactPoint - body.position;
+            Vector3 velocity = Vector3.Cross(body.angularVelocity, relativeContactPosition);
+            velocity += body.velocity;
+
+            Vector3 contactVelocity = contactToWorld.TransformTranspose(velocity);
+
+            return contactVelocity;
+        }
+
+        private void ApplyImpulse(Vector3 impulse, Rigidbody body, float deltaTime) {
+            if (body == null || body.isStatic) {
                 return;
             }
 
-            float newSepVelocity = -separatingVelocity * restitution;
-            float deltaVelocity = newSepVelocity - separatingVelocity;
+            Vector3 velocityChange = impulse * body.inverseMass;
 
-            float totalMass = one.mass;
-            if (two != null) {
-                totalMass += two.mass;
-            }
+            Vector3 impulsiveTorque = Vector3.Cross(impulse, contactPoint - body.position);
 
-            float impulse = deltaVelocity * totalMass;
-            Vector3 normalImpulse = impulse * contactNormal;
+            body.GetAngularAccelVelocity(impulsiveTorque, out Vector3 rotationChange);
 
-            one.velocity += normalImpulse * one.inverseMass;
+            body.velocity += velocityChange;
 
-            if (two != null) {
-                two.velocity += -normalImpulse * two.inverseMass;
-            }
+            body.angularVelocity += rotationChange;
         }
-
     }
 }

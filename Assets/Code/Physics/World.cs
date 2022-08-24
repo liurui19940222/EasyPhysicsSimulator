@@ -2,12 +2,12 @@
 using UnityEngine;
 
 namespace Physics {
-    
+
     public class World {
 
         private List<Rigidbody> _bodies;
 
-        private List<Contact> _contacts;
+        private CollisionData _collisionData;
 
         private ForceRegistry _forceRegistry;
 
@@ -16,13 +16,13 @@ namespace Physics {
         public World(float gravity) {
             ForceGeneratorFactory.Instance.InitFactory(gravity);
             _bodies = new List<Rigidbody>();
-            _contacts = new List<Contact>();
+            _collisionData = new CollisionData(0, 0);
             _forceRegistry = new ForceRegistry();
             _contactResolver = new ContactResolver();
         }
 
         public Rigidbody Create(Vector3 position, float mass, bool gravity = true) {
-            var particle = new Rigidbody(mass, 0.9f, 0.5f);
+            var particle = new Rigidbody(mass, 0.9f, 0.2f);
             particle.position = position;
             _bodies.Add(particle);
             if (gravity) {
@@ -55,15 +55,13 @@ namespace Physics {
         }
 
         public void Tick(float deltaTime) {
-            StartFrame();
-
             _forceRegistry.UpdateForces(deltaTime);
 
             Integrate(deltaTime);
 
             ComputeContacts();
 
-            _contactResolver.ResolveContacts(_contacts, _contacts.Count * 2, deltaTime);
+            _contactResolver.ResolveContacts(_collisionData.contacts, _collisionData.contacts.Count * 2, deltaTime);
         }
 
         public void GetRigidbodies(List<Rigidbody> list) {
@@ -74,12 +72,6 @@ namespace Physics {
             _forceRegistry.GetForceRegistrations(list);
         }
 
-        private void StartFrame() {
-            //for (int i = 0; i < _bodies.Count; ++i) {
-            //    _bodies[i].ClearForce();
-            //}
-        }
-
         private void Integrate(float deltaTime) {
             for (int i = 0; i < _bodies.Count; ++i) {
                 _bodies[i].Integrate(deltaTime);
@@ -87,7 +79,19 @@ namespace Physics {
         }
 
         private void ComputeContacts() {
-            _contacts.Clear();
+            _collisionData.Reset();
+
+            Collider colliderOne, colliderTwo;
+            for (int i = 0; i < _bodies.Count - 1; ++i) {
+                for (int j = i + 1; j < _bodies.Count; ++j) {
+                    colliderOne = _bodies[i].GetCollider();
+                    colliderTwo = _bodies[j].GetCollider();
+                    if (colliderOne == null || colliderTwo == null) {
+                        continue;
+                    }
+                    colliderOne.DetectCollision(_collisionData, colliderTwo);
+                }
+            }
         }
 
     }

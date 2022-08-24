@@ -23,14 +23,15 @@ public class Scene : MonoBehaviour
         _forceRegistrations = new List<ForceRegistration>();
         _world = new World(settings.gravity);
 
-        var body0 = _world.Create(new Vector3(0, 8, 0), 5);
+        var mass = settings.density;
+        var body0 = _world.Create(new Vector3(0, 8, 0), mass, true);
         body0.SetCollider(Vector3.one * 0.5f);
-        _world.AddAnchorSpring(body0, new Vector3(0, 8, 0), 5f, 0).JoinBody(new Vector3(0.5f, 0.5f, 0.0f));
-        //_world.AddDrag(body0, settings.dragConst1, settings.dragConst2);
 
-        //var particle1 = _world.Create(new Vector3(-3, 8, 0), 5);
-        //_world.AddSpring(particle0, particle1, 5.0f, 0.5f);
-        //_world.AddDrag(particle1, settings.dragConst1, settings.dragConst2);
+        Vector3 groundHalfSize = new Vector3(10, 0.1f, 10);
+        mass = settings.density * groundHalfSize.x * groundHalfSize.y * groundHalfSize.z * 8;
+        var body1 = _world.Create(new Vector3(0, 0, 0), mass, false);
+        body1.SetCollider(groundHalfSize);
+        body1.isStatic = true;
     }
 
     private void FixedUpdate() {
@@ -39,9 +40,19 @@ public class Scene : MonoBehaviour
     }
 
     private void Update() {
+
+
         // 渲染粒子
         _bodies.Clear();
         _world.GetRigidbodies(_bodies);
+
+        if (Input.GetMouseButton(0)) {
+            _bodies[0].AddForceAtPoint(Vector3.up * 300, new Vector3(-0.5f, -2, 0) + _bodies[0].position);
+        }
+
+        if (Input.GetMouseButton(1)) {
+            _bodies[0].AddForceAtPoint(Vector3.up * 300, new Vector3(0.5f, -2, 0) + _bodies[0].position);
+        }
 
         for (int i = 0; i < _bodies.Count; ++i) {
             if (!_bodyElements.TryGetValue(_bodies[i], out GameObject go)) {
@@ -63,7 +74,7 @@ public class Scene : MonoBehaviour
 
         foreach (var kv in _bodyElements) {
             kv.Value.transform.position = kv.Key.position;
-            kv.Value.transform.rotation = kv.Key.rotation;
+            kv.Value.transform.eulerAngles = kv.Key.rotation;
         }
 
         // 渲染作用力

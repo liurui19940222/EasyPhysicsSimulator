@@ -8,9 +8,17 @@
 
     public abstract class Collider {
 
+        public Rigidbody rigidbody { get; private set; }
+
         public abstract ColliderType type { get; }
 
-        public abstract void UpdateTransform(Rigidbody rigidbody);
+        public Collider(Rigidbody rigidbody) {
+            this.rigidbody = rigidbody;
+        }
+
+        public abstract void UpdateTransform();
+
+        public abstract void DetectCollision(CollisionData collision, Collider otherCollider);
 
     }
 }

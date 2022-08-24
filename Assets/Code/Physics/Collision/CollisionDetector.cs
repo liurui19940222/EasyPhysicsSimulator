@@ -4,9 +4,6 @@ using UnityEngine;
 namespace Physics {
     public static class CollisionDetector {
 
-        static List<Line> lines = new List<Line>();
-        static List<Plane> planes = new List<Plane>();
-        static List<Vector3> vertices = new List<Vector3>();
         public static int BoxAndBox(CollisionData data, ref Box one, ref Box two) {
             Vector3 toCentre = two.GetAxis(3) - one.GetAxis(3);
 
@@ -53,26 +50,34 @@ namespace Physics {
             int twoAxisIndex = best % 3;
 
             Vector3 minPoint, normal;
-
-            if (!_pointBoxTest(ref one, ref two, out minPoint, out normal, out pen) &&
-                !_pointBoxTest(ref two, ref one, out minPoint, out normal, out pen) &&
-                !_edgePlaneTest(ref one, ref two, twoAxisIndex, out minPoint, out normal, out pen) &&
-                !_edgePlaneTest(ref two, ref one, oneAxisIndex, out minPoint, out normal, out pen)) {
+            Contact contact = default;
+            if (_pointBoxTest(ref one, ref two, out minPoint, out normal, out pen) ||
+                _edgePlaneTest(ref one, ref two, twoAxisIndex, out minPoint, out normal, out pen)) {
+                contact.SetBodyData(one.body, two.body, data.friction, data.restitution);
+                contact.contactNormal = normal;
+            }
+            else if (_pointBoxTest(ref two, ref one, out minPoint, out normal, out pen) ||
+                _edgePlaneTest(ref two, ref one, oneAxisIndex, out minPoint, out normal, out pen)) {
+                contact.SetBodyData(two.body, one.body, data.friction, data.restitution);
+                contact.contactNormal = -normal;
+            }
+            else {
                 return 0;
             }
 
-            Contact contact = default;
             contact.penetration = pen;
-            contact.contactNormal = normal;
             contact.contactPoint = minPoint;
-            contact.SetBodyData(one.body, two.body,
-                data.friction, data.restitution);
             data.AddContact(contact);
 
             return 1;
 
         }
 
+        #region Internal Functions
+
+        static List<Line> lines = new List<Line>();
+        static List<Plane> planes = new List<Plane>();
+        static List<Vector3> vertices = new List<Vector3>();
         private static bool _pointBoxTest(ref Box one, ref Box two, out Vector3 minPoint, out Vector3 normal, out float pen) {
             vertices.Clear();
             two.GetVertices(vertices);
@@ -80,7 +85,7 @@ namespace Physics {
             foreach (var vertex in vertices) {
                 if (one.Inside(vertex)) {
                     minPoint = vertex;
-                    _determineNormal(ref one, two.GetAxis(3) - /*minPoint*/one.GetAxis(3), minPoint, out normal, out pen);
+                    _determineNormal(ref one, two.GetAxis(3) - one.GetAxis(3), minPoint, out normal, out pen);
                     return true;
                 }
             }
@@ -93,12 +98,14 @@ namespace Physics {
             planes.Clear();
             lines.Clear();
             one.GetPlane(planes);
-            two.GetEdgeParallelToAxis(twoAxisIndex, lines);
+            two.GetEdgeParallelToAxis(0, lines);
+            two.GetEdgeParallelToAxis(1, lines);
+            two.GetEdgeParallelToAxis(2, lines);
 
             foreach (var plane in planes) {
                 foreach (var edge in lines) {
                     if (plane.ComputeLineIntersectWithPlaneVolume(edge, out float t, out minPoint) == Plane.LineIntersectType.InSegment) {
-                        _determineNormal(ref one, two.GetAxis(3) - /*minPoint*/one.GetAxis(3), minPoint, out normal, out pen);
+                        _determineNormal(ref one, two.GetAxis(3) - one.GetAxis(3), minPoint, out normal, out pen);
                         return true;
                     }
                 }
@@ -124,7 +131,7 @@ namespace Physics {
 
             normal = box.GetAxis(maxIndex) * sign;
 
-            Line line = new Line() { 
+            Line line = new Line() {
                 p0 = minPoint,
                 p1 = minPoint + normal
             };
@@ -139,7 +146,7 @@ namespace Physics {
         }
 
         private static bool _tryAxis(ref Box one, ref Box two, Vector3 axis, Vector3 toCentre, int index, ref float smallestPenetration, ref int smallestCase) {
-            if (axis == Vector3.zero) // 两轴平行
+            if (axis == Vector3.zero)
                 return true;
             float penetration = _penetrationOnAxis(ref one, ref two, axis, toCentre);
             if (penetration < 0)
@@ -166,6 +173,8 @@ namespace Physics {
                 box.halfSize.y * Mathf.Abs(Vector3.Dot(axis, box.GetAxis(1))) +
                 box.halfSize.z * Mathf.Abs(Vector3.Dot(axis, box.GetAxis(2)));
         }
+
+        #endregion
 
     }
 }

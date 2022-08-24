@@ -1,4 +1,6 @@
-﻿namespace Physics {
+﻿using UnityEngine;
+
+namespace Physics {
     public struct Matrix3x3 {
 
         public float m00, m01, m02;
@@ -47,6 +49,20 @@
             m22 *= scale;
         }
 
+        public Vector3 Multiply(Vector3 vector) {
+            return new Vector3(
+                 m00 * vector.x + m01 * vector.y + m02 * vector.z,
+                 m10 * vector.x + m11 * vector.y + m12 * vector.z,
+                 m20 * vector.x + m21 * vector.y + m22 * vector.z
+                );
+        }
+
+        public Vector3 TransformTranspose(Vector3 vector) {
+            Matrix3x3 m = this;
+            m.SetTranspose();
+            return m.Multiply(vector);
+        }
+
         public void GetTranspose(out Matrix3x3 matrix) {
             matrix = this;
             matrix.SetTranspose();
@@ -87,6 +103,26 @@
         public void GetInverse(out Matrix3x3 matrix) {
             matrix = this;
             matrix.SetInverse();
+        }
+
+        public void SetColumn(int colIndex, Vector3 vector) {
+            switch (colIndex) {
+                case 0:
+                    m00 = vector.x;
+                    m10 = vector.y;
+                    m20 = vector.z;
+                    break;
+                case 1:
+                    m01 = vector.x;
+                    m11 = vector.y;
+                    m21 = vector.z;
+                    break;
+                case 2:
+                    m02 = vector.x;
+                    m12 = vector.y;
+                    m22 = vector.z;
+                    break;
+            }
         }
 
     }

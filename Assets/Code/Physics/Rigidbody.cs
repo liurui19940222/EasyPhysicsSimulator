@@ -9,9 +9,9 @@ namespace Physics {
 
         public Vector3 acceleration { get; set; }
 
-        public Quaternion rotation { get; set; }
+        public Vector3 rotation { get; set; }
 
-        public Vector3 angularVelocity { get; private set; }
+        public Vector3 angularVelocity { get; set; }
 
         public float linearDamping { get; set; }
 
@@ -25,6 +25,8 @@ namespace Physics {
                 _inverseMass = 1.0f / _mass;
             }
         }
+
+        public bool isStatic { get; set; }
 
         public float inverseMass => _inverseMass;
 
@@ -48,12 +50,12 @@ namespace Physics {
             this.mass = mass;
             this.linearDamping = linearDamping;
             this.angularDamping = angularDamping;
-            rotation = Quaternion.identity;
+            rotation = default;// Quaternion.identity;
         }
 
         public void SetCollider(Vector3 halfSize) {
             if (!(_collider is BoxCollider boxCollider)) {
-                _collider = boxCollider = new BoxCollider();   
+                _collider = boxCollider = new BoxCollider(this);   
             }
             boxCollider.box = new Box() { 
                 halfSize = halfSize
@@ -67,6 +69,7 @@ namespace Physics {
             inertiaTensor.m11 = coefficient * (sqrX + sqrZ);
             inertiaTensor.m22 = coefficient * (sqrX + sqrY);
             SetInertiaTensor(ref inertiaTensor);
+            _collider.UpdateTransform();
         }
 
         public Collider GetCollider() {
@@ -103,7 +106,7 @@ namespace Physics {
             position += velocity * deltaTime;
 
             // update rotation
-            rotation = rotation.AddScaledVector(angularVelocity, deltaTime).normalized;
+            rotation += angularVelocity * deltaTime;
             //rotation = Quaternion.Euler(angularVelocity * deltaTime) * rotation;
 
             CalculateDerivedData();
@@ -119,13 +122,20 @@ namespace Physics {
         public void CalculateDerivedData() {
             rotation.Normalize();
 
-            _transformMatrix.SetTRS(position, rotation, Vector3.one);
+            Quaternion q = Quaternion.Euler(rotation);
+            _transformMatrix.SetTRS(position, q, Vector3.one);
 
             TransformInertiaTensor();
+
+            _collider.UpdateTransform();
         }
 
         public void GetTransformMatrix(out Matrix4x4 mat) {
             mat = _transformMatrix;
+        }
+
+        public void GetAngularAccelVelocity(Vector3 torque, out Vector3 angularAcceleration) {
+            _inverseInertiaTensorWorld.Transform(torque, out angularAcceleration);
         }
 
         private void SetInertiaTensor(ref Matrix3x3 inertiaTensor) {
