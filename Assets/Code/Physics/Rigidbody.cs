@@ -51,9 +51,26 @@ namespace Physics {
             rotation = Quaternion.identity;
         }
 
-        public void SetInertiaTensor(Matrix3x3 inertiaTensor) {
-            _inverseInertiaTensor = inertiaTensor;
-            _inverseInertiaTensor.SetInverse();
+        public void SetCollider(Vector3 halfSize) {
+            if (!(_collider is BoxCollider boxCollider)) {
+                _collider = boxCollider = new BoxCollider();   
+            }
+            boxCollider.box = new Box() { 
+                halfSize = halfSize
+            };
+            Matrix3x3 inertiaTensor = default;
+            float coefficient = 1.0f / 12.0f * mass;
+            float sqrX = Mathf.Pow(halfSize.x * 2, 2);
+            float sqrY = Mathf.Pow(halfSize.y * 2, 2);
+            float sqrZ = Mathf.Pow(halfSize.z * 2, 2);
+            inertiaTensor.m00 = coefficient * (sqrY + sqrZ);
+            inertiaTensor.m11 = coefficient * (sqrX + sqrZ);
+            inertiaTensor.m22 = coefficient * (sqrX + sqrY);
+            SetInertiaTensor(ref inertiaTensor);
+        }
+
+        public Collider GetCollider() {
+            return _collider;
         }
 
         public void AddForce(Vector3 force) {
@@ -70,24 +87,28 @@ namespace Physics {
         }
 
         public void Integrate(float deltaTime) {
-            // update position
-            position += velocity * deltaTime;
-
-            // update rotation
-            rotation = rotation.AddScaledVector(angularVelocity, deltaTime);
+            // update angular velocity
+            _inverseInertiaTensorWorld.Transform(_accuTorque, out Vector3 angularAcceleration);
+            angularVelocity += angularAcceleration * deltaTime;
 
             // update velocity
             Vector3 resultingAcc = acceleration;
             resultingAcc += _accuForce * _inverseMass;
             velocity += resultingAcc * deltaTime;
-            velocity *= Mathf.Pow(linearDamping, deltaTime);
 
-            // update angular velocity
-            _inverseInertiaTensorWorld.Transform(_accuTorque, out Vector3 angularAcceleration);
-            angularVelocity += angularAcceleration * deltaTime;
+            velocity *= Mathf.Pow(linearDamping, deltaTime);
             angularVelocity *= Mathf.Pow(angularDamping, deltaTime);
 
+            // update position
+            position += velocity * deltaTime;
+
+            // update rotation
+            rotation = rotation.AddScaledVector(angularVelocity, deltaTime).normalized;
+            //rotation = Quaternion.Euler(angularVelocity * deltaTime) * rotation;
+
             CalculateDerivedData();
+
+            ClearForce();
         }
 
         public void ClearForce() {
@@ -101,6 +122,15 @@ namespace Physics {
             _transformMatrix.SetTRS(position, rotation, Vector3.one);
 
             TransformInertiaTensor();
+        }
+
+        public void GetTransformMatrix(out Matrix4x4 mat) {
+            mat = _transformMatrix;
+        }
+
+        private void SetInertiaTensor(ref Matrix3x3 inertiaTensor) {
+            _inverseInertiaTensor = inertiaTensor;
+            _inverseInertiaTensor.SetInverse();
         }
 
         private void TransformInertiaTensor() {

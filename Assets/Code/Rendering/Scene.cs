@@ -6,60 +6,74 @@ public class Scene : MonoBehaviour
 {
     public PhysicsSettings settings;
 
-    private World _particleWorld;
+    private World _world;
 
-    private List<Physics.Rigidbody> _particles;
+    private List<Physics.Rigidbody> _bodies;
 
     private List<ForceRegistration> _forceRegistrations;
 
-    private Dictionary<Physics.Rigidbody, GameObject> _particleElements;
+    private Dictionary<Physics.Rigidbody, GameObject> _bodyElements;
 
     private Dictionary<ForceRegistration, LineRenderer> _forceRegistrationElements;
 
     private void Start() {
-        _particleElements = new Dictionary<Physics.Rigidbody, GameObject>();
+        _bodyElements = new Dictionary<Physics.Rigidbody, GameObject>();
         _forceRegistrationElements = new Dictionary<ForceRegistration, LineRenderer>();
-        _particles = new List<Physics.Rigidbody>();
+        _bodies = new List<Physics.Rigidbody>();
         _forceRegistrations = new List<ForceRegistration>();
-        _particleWorld = new World(settings.gravity);
+        _world = new World(settings.gravity);
 
-        var particle0 = _particleWorld.Create(new Vector3(0, 8, 0), 5);
-        _particleWorld.AddAnchorSpring(particle0, new Vector3(0, 8, 0), 5f, 0);
-        _particleWorld.AddDrag(particle0, settings.dragConst1, settings.dragConst2);
+        var body0 = _world.Create(new Vector3(0, 8, 0), 5);
+        body0.SetCollider(Vector3.one * 0.5f);
+        _world.AddAnchorSpring(body0, new Vector3(0, 8, 0), 5f, 0).JoinBody(new Vector3(0.5f, 0.5f, 0.0f));
+        //_world.AddDrag(body0, settings.dragConst1, settings.dragConst2);
 
-        var particle1 = _particleWorld.Create(new Vector3(-3, 8, 0), 5);
-        _particleWorld.AddSpring(particle0, particle1, 5.0f, 0.5f);
-        _particleWorld.AddDrag(particle1, settings.dragConst1, settings.dragConst2);
+        //var particle1 = _world.Create(new Vector3(-3, 8, 0), 5);
+        //_world.AddSpring(particle0, particle1, 5.0f, 0.5f);
+        //_world.AddDrag(particle1, settings.dragConst1, settings.dragConst2);
     }
 
     private void FixedUpdate() {
         // 更新物理
-        _particleWorld.Tick(Time.fixedDeltaTime);
+        _world.Tick(Time.fixedDeltaTime);
     }
 
     private void Update() {
         // 渲染粒子
-        _particles.Clear();
-        _particleWorld.GetRigidbodies(_particles);
+        _bodies.Clear();
+        _world.GetRigidbodies(_bodies);
 
-        for (int i = 0; i < _particles.Count; ++i) {
-            if (!_particleElements.TryGetValue(_particles[i], out GameObject go)) {
-                go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        for (int i = 0; i < _bodies.Count; ++i) {
+            if (!_bodyElements.TryGetValue(_bodies[i], out GameObject go)) {
+                go = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 go.name = "Physics.Rigidbody";
-                go.transform.localScale = 2.0f * Vector3.one;
-                _particleElements.Add(_particles[i], go);
+                var collider = _bodies[i].GetCollider();
+                switch (collider.type) {
+                    case ColliderType.Box:
+                        go.transform.localScale = ((Physics.BoxCollider)collider).box.halfSize * 2;
+                        break;
+                    case ColliderType.Sphere:
+                        break;
+                    case ColliderType.Plane:
+                        break;
+                }
+                _bodyElements.Add(_bodies[i], go);
             }
         }
 
-        foreach (var kv in _particleElements) {
+        foreach (var kv in _bodyElements) {
             kv.Value.transform.position = kv.Key.position;
+            kv.Value.transform.rotation = kv.Key.rotation;
         }
 
         // 渲染作用力
         _forceRegistrations.Clear();
-        _particleWorld.GetForceRegistrations(_forceRegistrations);
+        _world.GetForceRegistrations(_forceRegistrations);
         for (int i = 0; i < _forceRegistrations.Count; ++i) {
             if (!_forceRegistrationElements.TryGetValue(_forceRegistrations[i], out LineRenderer line)) {
+                if (_forceRegistrations[i].generator is GravityGenerator) {
+                    continue;
+                }
                 var go = new GameObject();
                 go.hideFlags = HideFlags.HideInHierarchy;
                 line = go.AddComponent<LineRenderer>();

@@ -10,5 +10,7 @@
 
         public abstract ColliderType type { get; }
 
+        public abstract void UpdateTransform(Rigidbody rigidbody);
+
     }
 }

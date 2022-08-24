@@ -10,10 +10,16 @@ namespace Physics {
 
         public float restLength { get; set; }
 
+        private Vector3 _joinPoint;
+
         public AnchoredSpringGenerator(Vector3 anchor, float springConstant, float restLength) {
             this.anchor = anchor;
             this.springConstant = springConstant;
             this.restLength = restLength;
+        }
+
+        public void JoinBody(Vector3 joinPoint) {
+            _joinPoint = joinPoint;
         }
 
         public void UpdateForce(Rigidbody body, float deltaTime) {
@@ -23,7 +29,7 @@ namespace Physics {
             }
             float distance = force.magnitude;
             force = -(force / distance) * Mathf.Abs(distance - restLength) * springConstant;
-            body.AddForce(force);
+            body.AddForceAtBodyPoint(force, _joinPoint);
         }
     }
 

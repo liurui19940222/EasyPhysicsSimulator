@@ -21,11 +21,13 @@ namespace Physics {
             _contactResolver = new ContactResolver();
         }
 
-        public Rigidbody Create(Vector3 position, float mass) {
-            var particle = new Rigidbody(mass, 0.9f, 0.9f);
+        public Rigidbody Create(Vector3 position, float mass, bool gravity = true) {
+            var particle = new Rigidbody(mass, 0.9f, 0.5f);
             particle.position = position;
             _bodies.Add(particle);
-            _forceRegistry.Add(particle, ForceGeneratorFactory.Instance.GetForceGenerator(CommonForceGeneratorType.Gravity));
+            if (gravity) {
+                _forceRegistry.Add(particle, ForceGeneratorFactory.Instance.GetForceGenerator(CommonForceGeneratorType.Gravity));
+            }
             return particle;
         }
 
@@ -33,8 +35,8 @@ namespace Physics {
             return _bodies.Remove(body);
         }
 
-        public IForceGenerator AddAnchorSpring(Rigidbody body, Vector3 anchor, float springConstant, float restLength) {
-            IForceGenerator anchorSpring = new AnchoredSpringGenerator(anchor, springConstant, restLength);
+        public AnchoredSpringGenerator AddAnchorSpring(Rigidbody body, Vector3 anchor, float springConstant, float restLength) {
+            AnchoredSpringGenerator anchorSpring = new AnchoredSpringGenerator(anchor, springConstant, restLength);
             _forceRegistry.Add(body, anchorSpring);
             return anchorSpring;
         }
@@ -73,9 +75,9 @@ namespace Physics {
         }
 
         private void StartFrame() {
-            for (int i = 0; i < _bodies.Count; ++i) {
-                _bodies[i].ClearForce();
-            }
+            //for (int i = 0; i < _bodies.Count; ++i) {
+            //    _bodies[i].ClearForce();
+            //}
         }
 
         private void Integrate(float deltaTime) {
