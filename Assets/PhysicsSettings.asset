@@ -14,5 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   anchorMat: {fileID: 2100000, guid: a77160e9e06c0cf4bbadb3fce9e1a1a4, type: 2}
   forceLineMat: {fileID: 2100000, guid: 2c8dc1d547ed5c940843ff99ad2b4785, type: 2}
-  gravity: 10
+  gravity: 2
+  dragConst1: 0.2
+  dragConst2: 0
   density: 7.85

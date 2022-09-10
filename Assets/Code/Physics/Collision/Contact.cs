@@ -101,68 +101,88 @@ namespace Physics {
         }
 
         private void ResolveVelocity(float deltaTime) {
-            float deltaVelocity = CompulteDeltaVelocity(one) + CompulteDeltaVelocity(two);
+            //float deltaVelocity = CompulteDeltaVelocity(one, contactNormal) + CompulteDeltaVelocity(two, -contactNormal);
 
-            Vector3 contactVelocity = CalculateLocalVelocity(one, deltaTime) - CalculateLocalVelocity(two, deltaTime);
+            //Vector3 contactVelocity = CalculateLocalVelocity(one, deltaTime) - CalculateLocalVelocity(two, deltaTime);
 
-            float desiredDeltaVeclocity = -contactVelocity.x * (1 + restitution);
+            //float desiredDeltaVeclocity = -contactVelocity.x * (1 + restitution);
 
-            Vector3 impulseContact = new Vector3(desiredDeltaVeclocity / deltaVelocity, 0, 0);
+            //Vector3 impulseContact = new Vector3(desiredDeltaVeclocity / deltaVelocity, 0, 0);
 
-            Vector3 impulse = contactToWorld.Multiply(impulseContact);
+            //Vector3 impulse = contactToWorld.Multiply(impulseContact);
 
-            ApplyImpulse(impulse, one, deltaTime);
-            ApplyImpulse(-impulse, two, deltaTime);
-        }
+            //ApplyImpulse(impulse, one, deltaTime);
+            //ApplyImpulse(-impulse, two, deltaTime);
 
-        private float CompulteDeltaVelocity(Rigidbody body) {
-            if (body == null || body.isStatic) {
-                return 0;
+            Vector3 relativeVelBeforeContact = Vector3.zero;
+
+            if (one != null && !one.isStatic) {
+                Vector3 r = contactPoint - one.position;
+                Vector3 contactPointVel = one.velocity + Vector3.Cross(r, one.angularVelocity);
+                contactPointVel = contactToWorld.TransformTranspose(contactPointVel);
+                relativeVelBeforeContact -= contactPointVel;
             }
 
-            Vector3 relativeContactPosition = contactPoint - body.position;
-
-            Vector3 torquePerUnitImpulse = Vector3.Cross(relativeContactPosition, contactNormal);
-
-            body.GetAngularAccelVelocity(torquePerUnitImpulse, out Vector3 rotationPerUnitImpulse);
-
-            Vector3 velocityPerUnitImpulse = Vector3.Cross(rotationPerUnitImpulse, relativeContactPosition);
-
-            Vector3 velocityPerUnitImpulseContact = contactToWorld.TransformTranspose(velocityPerUnitImpulse);
-
-            float angularComponent = velocityPerUnitImpulseContact.x;
-
-            return angularComponent + body.inverseMass;
-        }
-
-        private Vector3 CalculateLocalVelocity(Rigidbody body, float duration) {
-            if (body == null || body.isStatic) {
-                return Vector3.zero;
+            if (two != null && !two.isStatic) {
+                Vector3 r = contactPoint - two.position;
+                Vector3 contactPointVel = two.velocity + Vector3.Cross(r, two.angularVelocity);
+                contactPointVel = -contactToWorld.TransformTranspose(contactPointVel);
+                relativeVelBeforeContact -= contactPointVel;
             }
 
-            Vector3 relativeContactPosition = contactPoint - body.position;
-            Vector3 velocity = Vector3.Cross(body.angularVelocity, relativeContactPosition);
-            velocity += body.velocity;
+            Vector3 relativeVelAfterContact = relativeVelBeforeContact * -(1 + restitution);
+            Vector3 newRelativeVelContact = contactToWorld.Multiply(relativeVelAfterContact);
 
-            Vector3 contactVelocity = contactToWorld.TransformTranspose(velocity);
-
-            return contactVelocity;
+            two.velocity = newRelativeVelContact;
         }
 
-        private void ApplyImpulse(Vector3 impulse, Rigidbody body, float deltaTime) {
-            if (body == null || body.isStatic) {
-                return;
-            }
+        //private float CompulteDeltaVelocity(Rigidbody body, Vector3 normal) {
+        //    if (body == null || body.isStatic) {
+        //        return 0;
+        //    }
+        //    Vector3 relativeContactPosition = contactPoint - body.position;
 
-            Vector3 velocityChange = impulse * body.inverseMass;
+        //    Vector3 torquePerUnitImpulse = Vector3.Cross(relativeContactPosition, normal);
 
-            Vector3 impulsiveTorque = Vector3.Cross(impulse, contactPoint - body.position);
+        //    body.GetAngularAccelVelocity(torquePerUnitImpulse, out Vector3 rotationPerUnitImpulse);
 
-            body.GetAngularAccelVelocity(impulsiveTorque, out Vector3 rotationChange);
+        //    Vector3 velocityPerUnitImpulse = Vector3.Cross(rotationPerUnitImpulse, relativeContactPosition);
 
-            body.velocity += velocityChange;
+        //    Vector3 velocityPerUnitImpulseContact = contactToWorld.TransformTranspose(velocityPerUnitImpulse);
 
-            body.angularVelocity += rotationChange;
-        }
+        //    float angularComponent = velocityPerUnitImpulseContact.x;
+
+        //    return angularComponent + body.inverseMass;
+        //}
+
+        //private Vector3 CalculateLocalVelocity(Rigidbody body, float duration) {
+        //    if (body == null || body.isStatic) {
+        //        return Vector3.zero;
+        //    }
+
+        //    Vector3 relativeContactPosition = contactPoint - body.position;
+        //    Vector3 velocity = Vector3.Cross(body.angularVelocity, relativeContac+tPosition);
+        //    velocity += body.velocity;
+
+        //    Vector3 contactVelocity = contactToWorld.TransformTranspose(velocity);
+
+        //    return contactVelocity;
+        //}
+
+        //private void ApplyImpulse(Vector3 impulse, Rigidbody body, float deltaTime) {
+        //    if (body == null || body.isStatic) {
+        //        return;
+        //    }
+
+        //    Vector3 velocityChange = impulse * body.inverseMass;
+
+        //    Vector3 impulsiveTorque = Vector3.Cross(impulse, contactPoint - body.position);
+
+        //    body.GetAngularAccelVelocity(impulsiveTorque, out Vector3 rotationChange);
+
+        //    body.velocity += velocityChange;
+
+        //    body.angularVelocity += rotationChange;
+        //}
     }
 }

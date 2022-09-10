@@ -35,23 +35,23 @@ public class Scene : MonoBehaviour
     }
 
     private void FixedUpdate() {
-        // 更新物理
-        _world.Tick(Time.fixedDeltaTime);
+
     }
 
     private void Update() {
-
+        // 更新物理
+        _world.Tick(Time.fixedDeltaTime);
 
         // 渲染粒子
         _bodies.Clear();
         _world.GetRigidbodies(_bodies);
 
-        if (Input.GetMouseButton(0)) {
-            _bodies[0].AddForceAtPoint(Vector3.up * 300, new Vector3(-0.5f, -2, 0) + _bodies[0].position);
+        if (Input.GetMouseButtonDown(0)) {
+            _bodies[0].AddForceAtPoint(Vector3.up * 6000, new Vector3(-2f, -2, 0) + _bodies[0].position);
         }
 
-        if (Input.GetMouseButton(1)) {
-            _bodies[0].AddForceAtPoint(Vector3.up * 300, new Vector3(0.5f, -2, 0) + _bodies[0].position);
+        if (Input.GetMouseButtonDown(1)) {
+            _bodies[0].AddForceAtPoint(Vector3.up * 6000, new Vector3(2f, -2, 0) + _bodies[0].position);
         }
 
         for (int i = 0; i < _bodies.Count; ++i) {
@@ -74,7 +74,7 @@ public class Scene : MonoBehaviour
 
         foreach (var kv in _bodyElements) {
             kv.Value.transform.position = kv.Key.position;
-            kv.Value.transform.eulerAngles = kv.Key.rotation;
+            kv.Value.transform.rotation = kv.Key.rotation;
         }
 
         // 渲染作用力

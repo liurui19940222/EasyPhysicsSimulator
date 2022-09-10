@@ -9,7 +9,7 @@ namespace Physics {
 
         public Vector3 acceleration { get; set; }
 
-        public Vector3 rotation { get; set; }
+        public Quaternion rotation { get; set; }
 
         public Vector3 angularVelocity { get; set; }
 
@@ -34,6 +34,8 @@ namespace Physics {
 
         private float _inverseMass;
 
+        private Vector3 _angularMomentum;
+
         private Vector3 _accuForce;
 
         private Vector3 _accuTorque;
@@ -50,7 +52,7 @@ namespace Physics {
             this.mass = mass;
             this.linearDamping = linearDamping;
             this.angularDamping = angularDamping;
-            rotation = default;// Quaternion.identity;
+            rotation = Quaternion.identity;
         }
 
         public void SetCollider(Vector3 halfSize) {
@@ -90,9 +92,14 @@ namespace Physics {
         }
 
         public void Integrate(float deltaTime) {
+            CalculateDerivedData();
+
+            _angularMomentum += _accuTorque * deltaTime;
             // update angular velocity
             _inverseInertiaTensorWorld.Transform(_accuTorque, out Vector3 angularAcceleration);
             angularVelocity += angularAcceleration * deltaTime;
+            //_inverseInertiaTensorWorld.Transform(L, out Vector3 a);
+            //angularVelocity = a;
 
             // update velocity
             Vector3 resultingAcc = acceleration;
@@ -106,8 +113,7 @@ namespace Physics {
             position += velocity * deltaTime;
 
             // update rotation
-            rotation += angularVelocity * deltaTime;
-            //rotation = Quaternion.Euler(angularVelocity * deltaTime) * rotation;
+            rotation = MathExtension.AddScaledVector(rotation, angularVelocity, deltaTime);
 
             CalculateDerivedData();
 
@@ -120,10 +126,9 @@ namespace Physics {
         }
 
         public void CalculateDerivedData() {
-            rotation.Normalize();
+            rotation = rotation.normalized;
 
-            Quaternion q = Quaternion.Euler(rotation);
-            _transformMatrix.SetTRS(position, q, Vector3.one);
+            _transformMatrix.SetTRS(position, rotation, Vector3.one);
 
             TransformInertiaTensor();
 

@@ -26,13 +26,13 @@ namespace Physics {
             m01 = a.m00 * b.m01 + a.m01 * b.m11 + a.m02 * b.m21;
             m02 = a.m00 * b.m02 + a.m01 * b.m12 + a.m02 * b.m22;
 
-            m00 = a.m10 * b.m00 + a.m11 * b.m10 + a.m12 * b.m20;
-            m01 = a.m10 * b.m01 + a.m11 * b.m11 + a.m12 * b.m21;
-            m02 = a.m10 * b.m02 + a.m11 * b.m12 + a.m12 * b.m22;
+            m10 = a.m10 * b.m00 + a.m11 * b.m10 + a.m12 * b.m20;
+            m11 = a.m10 * b.m01 + a.m11 * b.m11 + a.m12 * b.m21;
+            m12 = a.m10 * b.m02 + a.m11 * b.m12 + a.m12 * b.m22;
 
-            m00 = a.m20 * b.m00 + a.m21 * b.m10 + a.m22 * b.m20;
-            m01 = a.m20 * b.m01 + a.m21 * b.m11 + a.m22 * b.m21;
-            m02 = a.m20 * b.m02 + a.m21 * b.m12 + a.m22 * b.m22;
+            m20 = a.m20 * b.m00 + a.m21 * b.m10 + a.m22 * b.m20;
+            m21 = a.m20 * b.m01 + a.m21 * b.m11 + a.m22 * b.m21;
+            m22 = a.m20 * b.m02 + a.m21 * b.m12 + a.m22 * b.m22;
         }
 
         public void Multiply(float scale) {
